@@ -23,6 +23,12 @@ namespace DSmyth.TerrainModule
         private void Start() {
             GenerateMap();
         }
+        private void Update() {
+            if (Input.GetKeyDown(KeyCode.Space)) {
+                GenerateMap();
+            }
+        }
+
 
         private void GenerateMap() {
             m_Map = new int[m_Width, m_Height];
