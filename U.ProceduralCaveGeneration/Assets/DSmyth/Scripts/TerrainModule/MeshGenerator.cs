@@ -12,24 +12,26 @@ namespace DSmyth.TerrainModule {
         [SerializeField] private int m_SquareSize = 1;
         [SerializeField] private bool m_Is3D = true;
 
-        [Header("Walls")]
+        [Header("Elements")]
         [SerializeField] private MeshFilter m_WallMeshFilter;
-        private Dictionary<int, List<Triangle>> m_TriangleDict = new Dictionary<int, List<Triangle>>();
         private List<List<int>> m_Outlines = new List<List<int>>();
         private HashSet<int> m_CheckedVertices = new HashSet<int>();
 
         [Header("Debug")]
-        [SerializeField] private List<Vector3> m_Vertices = new List<Vector3>();
-        [SerializeField] private List<int> m_Triangles = new List<int>();
         [SerializeField] private bool m_DrawGizmos = false;
+        //[SerializeField] private List<Vector3> m_Vertices = new List<Vector3>();
+        //[SerializeField] private List<int> m_Triangles = new List<int>();
+        //private Dictionary<int, List<Triangle>> m_TriangleDict = new Dictionary<int, List<Triangle>>();
 
         private SquareGrid m_SquareGrid;
+        private Mesh m_Mesh;
         private MeshFilter m_MeshFilter;
 
 
 
         private void Start() {
             if (!m_MeshFilter) m_MeshFilter = GetComponent<MeshFilter>();
+            m_Mesh = new Mesh();
         }
 
         private void OnDrawGizmos() {
@@ -62,31 +64,18 @@ namespace DSmyth.TerrainModule {
 
         public void GenerateMesh(int[,] map) {
 
-            m_TriangleDict.Clear();
             m_Outlines.Clear();
             m_CheckedVertices.Clear();
 
-            m_Vertices.Clear();
-            m_Triangles.Clear();
-
             m_SquareGrid = new SquareGrid(map, m_SquareSize);
-            for (int x = 0; x < m_SquareGrid.Squares.GetLength(0); x++) {
-                for (int y = 0; y < m_SquareGrid.Squares.GetLength(1); y++) {
-                    Square currentSquare = m_SquareGrid.Squares[x, y];
-                    //currentSquare.Interpolate(isoValue);
-                    TriangulateSquare(currentSquare);
-                }
-            }
 
+            m_Mesh = new Mesh();
+            m_Mesh.vertices = m_SquareGrid.Vertices.ToArray();
+            m_Mesh.triangles = m_SquareGrid.Triangles.ToArray();
+            m_Mesh.uv = m_SquareGrid.GetUVs();
+            m_Mesh.RecalculateNormals();
 
-            Mesh mesh = new Mesh();
-
-            mesh.vertices = m_Vertices.ToArray();
-            mesh.triangles = m_Triangles.ToArray();
-            mesh.uv = GetVerticesV2();
-            mesh.RecalculateNormals();
-
-            m_MeshFilter.mesh = mesh;
+            m_MeshFilter.mesh = m_Mesh;
 
             if (m_Is3D) {
                 CreateWallMesh();
@@ -106,10 +95,10 @@ namespace DSmyth.TerrainModule {
             foreach (List<int> outline in m_Outlines) {
                 for (int i = 0; i < outline.Count - 1; i++) {
                     int startIndex = wallVertices.Count;
-                    wallVertices.Add(m_Vertices[outline[i]] + Vector3.up * wallHeight / 2);   // Left vertex
-                    wallVertices.Add(m_Vertices[outline[i + 1]] + Vector3.up * wallHeight / 2);   // right
-                    wallVertices.Add(m_Vertices[outline[i]] - Vector3.up * wallHeight / 2);   // bottom left
-                    wallVertices.Add(m_Vertices[outline[i + 1]] - Vector3.up * wallHeight / 2);   // bottom right
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]] + Vector3.up * wallHeight / 2);   // Left vertex
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]] + Vector3.up * wallHeight / 2);   // right
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]] - Vector3.up * wallHeight / 2);   // bottom left
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]] - Vector3.up * wallHeight / 2);   // bottom right
 
                     wallTriangles.Add(startIndex + 0);
                     wallTriangles.Add(startIndex + 2);
@@ -142,138 +131,15 @@ namespace DSmyth.TerrainModule {
                 Vector2[] edgePoints = new Vector2[outline.Count];
 
                 for (int i = 0; i < outline.Count; i++) {
-                    edgePoints[i] = (Vector2)m_Vertices[outline[i]];
+                    //edgePoints[i] = (Vector2)m_SquareGrid.Vertices[outline[i]];
+                    edgePoints[i] = new Vector2(m_SquareGrid.Vertices[outline[i]].x, m_SquareGrid.Vertices[outline[i]].z);
                 }
                 edgeCollider.points = edgePoints;
             }
         }
 
-        private void TriangulateSquare(Square square) {
-            switch (square.Configuration) {
-                case 0:
-                    break;
-
-                /// 1 points
-                // Bottom Left
-                case 1:
-                    MeshFromPoints(square.CentreLeft, square.CentreBottom, square.BottomLeft);
-                    break;
-                // Bottom Right
-                case 2:
-                    MeshFromPoints(square.BottomRight, square.CentreBottom, square.CentreRight);
-                    break;
-                // Top Right
-                case 4:
-                    MeshFromPoints(square.TopRight, square.CentreRight, square.CentreTop);
-                    break;
-                // Top Left
-                case 8:
-                    MeshFromPoints(square.TopLeft, square.CentreTop, square.CentreLeft);
-                    break;
-
-                /// 2 points
-                // Bottom Left & Bottom Right
-                case 3:
-                    MeshFromPoints(square.CentreRight, square.BottomRight, square.BottomLeft, square.CentreLeft);
-                    break;
-                // Top Right & Bottom Right
-                case 6:
-                    MeshFromPoints(square.CentreTop, square.TopRight, square.BottomRight, square.CentreBottom);
-                    break;
-                // Top Left & Bottom Left
-                case 9:
-                    MeshFromPoints(square.TopLeft, square.CentreTop, square.CentreBottom, square.BottomLeft);
-                    break;
-                // Top Left & Top Right
-                case 12:
-                    MeshFromPoints(square.TopLeft, square.TopRight, square.CentreRight, square.CentreLeft);
-                    break;
-
-                // Bottom Left & Top Right
-                case 5:
-                    MeshFromPoints(square.CentreTop, square.TopRight, square.CentreRight, square.CentreBottom, square.BottomLeft, square.CentreLeft);
-                    break;
-                // Top Left & Bottom Right
-                case 10:
-                    MeshFromPoints(square.TopLeft, square.CentreTop, square.CentreRight, square.BottomRight, square.CentreBottom, square.CentreLeft);
-                    break;
-
-                /// 3 points
-                // Top Right & Bottom Right & Bottom Left
-                case 7:
-                    MeshFromPoints(square.CentreTop, square.TopRight, square.BottomRight, square.BottomLeft, square.CentreLeft);
-                    break;
-                // Top Left & Bottom Right & Bottom Left
-                case 11:
-                    MeshFromPoints(square.TopLeft, square.CentreTop, square.CentreRight, square.BottomRight, square.BottomLeft);
-                    break;
-                // Top Left & Top Right & Bottom Left
-                case 13:
-                    MeshFromPoints(square.TopLeft, square.TopRight, square.CentreRight, square.CentreBottom, square.BottomLeft);
-                    break;
-                // Top Left & Top Right & Bottom Right
-                case 14:
-                    MeshFromPoints(square.TopLeft, square.TopRight, square.BottomRight, square.CentreBottom, square.CentreLeft);
-                    break;
-
-                /// 4 points
-                // All vertices
-                case 15:
-                    MeshFromPoints(square.TopLeft, square.TopRight, square.BottomRight, square.BottomLeft);
-                    break;
-            }
-        }
-
-        private void MeshFromPoints(params Node[] points) {
-            AssignVertices(points);
-
-            for (int i = 0; i < points.Length - 2; i++)
-                CreateTriangle(points[0], points[i + 1], points[i + 2]);
-        }
-
-        private void AssignVertices(Node[] points) {
-            for (int i = 0; i < points.Length; i++) {
-                // Only add the vertice if it hasnt already been added
-                if (points[i].VetexIndex == -1) {
-                    points[i].VetexIndex = m_Vertices.Count;
-                    m_Vertices.Add(points[i].Position);
-                }
-            }
-        }
-
-        private void CreateTriangle(Node a, Node b, Node c) {
-            m_Triangles.Add(a.VetexIndex);
-            m_Triangles.Add(b.VetexIndex);
-            m_Triangles.Add(c.VetexIndex);
-
-            Triangle triangle = new Triangle(a.VetexIndex, b.VetexIndex, c.VetexIndex);
-            AddTriangleToDictionary(triangle.VertexIndexA, triangle);
-            AddTriangleToDictionary(triangle.VertexIndexB, triangle);
-            AddTriangleToDictionary(triangle.VertexIndexC, triangle);
-
-        }
-
-        private void AddTriangleToDictionary(int vertexIndexKey, Triangle triangle) {
-            if (m_TriangleDict.ContainsKey(vertexIndexKey)) {
-                m_TriangleDict[vertexIndexKey].Add(triangle);
-            } else {
-                List<Triangle> triangleList = new List<Triangle>();
-                triangleList.Add(triangle);
-                m_TriangleDict.Add(vertexIndexKey, triangleList);
-            }
-        }
-
-        private Vector2[] GetVerticesV2() {
-            List<Vector2> verticesV2 = new List<Vector2>();
-            for (int i = 0; i < m_Vertices.Count; i++) {
-                //verticesV2.Add((Vector2)m_Vertices[i]);
-                verticesV2.Add(new Vector2(m_Vertices[i].x, m_Vertices[i].z));
-            }
-            return verticesV2.ToArray();
-        }
-
         private void CalculateMeshOutlines() {
-            for (int vertexIndex = 0; vertexIndex < m_Vertices.Count; vertexIndex++) {
+            for (int vertexIndex = 0; vertexIndex < m_SquareGrid.Vertices.Count; vertexIndex++) {
                 if (m_CheckedVertices.Contains(vertexIndex)) continue;
 
                 int newOutlineVertex = GetConnectedOutlineVertex(vertexIndex);
@@ -299,7 +165,7 @@ namespace DSmyth.TerrainModule {
         }
 
         private int GetConnectedOutlineVertex(int vertexIndex) {
-            List<Triangle> trianglesContainingVertex = m_TriangleDict[vertexIndex];
+            List<Triangle> trianglesContainingVertex = m_SquareGrid.TriangleDict[vertexIndex];
 
             for (int i = 0; i < trianglesContainingVertex.Count; i++) {
                 Triangle triangle = trianglesContainingVertex[i];
@@ -317,7 +183,7 @@ namespace DSmyth.TerrainModule {
         }
 
         private bool IsOutlineEdge(int vertexA, int vertexB) {
-            List<Triangle> trianglesContainingVertexA = m_TriangleDict[vertexA];
+            List<Triangle> trianglesContainingVertexA = m_SquareGrid.TriangleDict[vertexA];
             int sharedTriangleCount = 0;
 
             for (int i = 0; i < trianglesContainingVertexA.Count; i++) {
@@ -329,125 +195,6 @@ namespace DSmyth.TerrainModule {
                 }
             }
             return sharedTriangleCount == 1;
-        }
-
-        struct Triangle {
-            public int VertexIndexA;
-            public int VertexIndexB;
-            public int VertexIndexC;
-            int[] Vertices;
-
-            public Triangle(int a, int b, int c) {
-                VertexIndexA = a; VertexIndexB = b; VertexIndexC = c;
-
-                Vertices = new int[3];
-                Vertices[0] = a;
-                Vertices[1] = b;
-                Vertices[2] = c;
-            }
-
-            public int this[int i] {
-                get {
-                    return Vertices[i];
-                }
-            }
-
-            public bool Contains(int vertexIndex) {
-                return vertexIndex == VertexIndexA || vertexIndex == VertexIndexB || vertexIndex == VertexIndexC;
-            }
-        }
-
-        public class SquareGrid {
-            public Square[,] Squares;
-
-            public SquareGrid(int[,] map, float squareSize) {
-
-                int nodeCountX = map.GetLength(0);
-                int nodeCountY = map.GetLength(1);
-                float mapWidth = nodeCountX * squareSize;
-                float mapHeight = nodeCountY * squareSize;
-
-                // Create all the control nodes (corner vertices)
-                ControlNode[,] controlNodes = new ControlNode[nodeCountX, nodeCountY];
-                for (int x = 0; x < nodeCountX; x++) {
-                    for (int y = 0; y < nodeCountY; y++) {
-                        // Calculate Position of current control node
-                        Vector3 pos = new Vector3(-mapWidth / 2 + x * squareSize + squareSize / 2, 0, -mapHeight / 2 + y * squareSize + squareSize / 2);
-                        controlNodes[x, y] = new ControlNode(pos, map[x, y] == 1, squareSize);
-                    }
-                }
-
-                // Create all the squares in the grid
-                Squares = new Square[nodeCountX - 1, nodeCountY - 1];
-                for (int x = 0; x < nodeCountX - 1; x++) {
-                    for (int y = 0; y < nodeCountY - 1; y++) {
-                        Squares[x, y] = new Square(controlNodes[x, y + 1], controlNodes[x + 1, y + 1], controlNodes[x + 1, y], controlNodes[x, y]);
-                    }
-                }
-            }
-        }
-
-        public class Square {
-            public ControlNode TopRight, BottomRight, BottomLeft, TopLeft;
-            public Node CentreTop, CentreRight, CentreBottom, CentreLeft;
-            public int Configuration;
-
-            public Square(ControlNode topLeft, ControlNode topRight, ControlNode bottomRight, ControlNode bottomLeft) {
-                TopRight = topRight;
-                BottomRight = bottomRight;
-                BottomLeft = bottomLeft;
-                TopLeft = topLeft;
-
-                CentreTop = TopLeft.Right;
-                CentreRight = BottomRight.Above;
-                CentreBottom = BottomLeft.Right;
-                CentreLeft = BottomLeft.Above;
-
-                if (topLeft.Active)
-                    Configuration += 8;
-                if (topRight.Active)
-                    Configuration += 4;
-                if (bottomRight.Active)
-                    Configuration += 2;
-                if (bottomLeft.Active)
-                    Configuration += 1;
-            }
-
-            //public void Interpolate(float isoValue) {
-
-            //    float topLerp = Mathf.InverseLerp(TopLeft.Value, TopRight.Value, isoValue);
-            //    CentreTop.Position = TopLeft.Position + (TopRight.Position - TopLeft.Position) * topLerp;
-
-            //    float rightLerp = Mathf.InverseLerp(TopRight.Value, BottomRight.Value, isoValue);
-            //    CentreRight.Position = TopRight.Position + (BottomRight.Position - TopRight.Position) * rightLerp;
-
-            //    float bottomLerp = Mathf.InverseLerp(BottomLeft.Value, BottomRight.Value, isoValue);
-            //    CentreBottom.Position = BottomLeft.Position + (BottomRight.Position - BottomLeft.Position) * bottomLerp;
-
-            //    float leftLerp = Mathf.InverseLerp(TopLeft.Value, BottomLeft.Value, isoValue);
-            //    CentreLeft.Position = TopLeft.Position + (BottomLeft.Position - TopLeft.Position) * leftLerp;
-            //}
-        }
-
-        public class Node {
-            public Vector3 Position;
-            public int VetexIndex = -1;
-
-            public Node(Vector3 _pos) {
-                Position = _pos;
-            }
-        }
-
-        public class ControlNode : Node {
-            public bool Active;
-            //public float Value;
-            public Node Above, Right;
-
-            public ControlNode(Vector3 _pos, bool _active, float squareSize) : base(_pos) {
-                Active = _active;
-                Above = new Node(Position + Vector3.forward * squareSize / 2f);
-                Right = new Node(Position + Vector3.right * squareSize / 2f);
-            }
         }
     }
 }
