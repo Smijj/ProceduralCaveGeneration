@@ -114,6 +114,13 @@ namespace DSmyth.TerrainModule {
             m_WallMesh.triangles = wallTriangles.ToArray();
             //m_WallMesh.RecalculateNormals();
 
+            List<Vector2> verticesV2 = new List<Vector2>();
+            for (int i = 0; i < wallVertices.Count; i++) {
+                //verticesV2.Add((Vector2)wallVertices[i]);
+                verticesV2.Add(new Vector2(wallVertices[i].x, wallVertices[i].y));
+            }
+            m_WallMesh.uv = verticesV2.ToArray();
+
             m_WallMeshFilter.mesh = m_WallMesh;
         }
 
