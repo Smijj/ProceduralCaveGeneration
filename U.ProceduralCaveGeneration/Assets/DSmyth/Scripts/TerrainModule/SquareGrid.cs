@@ -133,6 +133,11 @@ namespace DSmyth.TerrainModule {
                 // All vertices
                 case 15:
                     MeshDataFromPoints(square.TopLeft, square.TopRight, square.BottomRight, square.BottomLeft);
+                    // Optimization for if the code for calculating the mesh's outlines is moved into this class
+                    //m_CheckedVertices.Add(square.TopLeft.VertexIndex);
+                    //m_CheckedVertices.Add(square.TopRight.VertexIndex);
+                    //m_CheckedVertices.Add(square.BottomRight.VertexIndex);
+                    //m_CheckedVertices.Add(square.BottomLeft.VertexIndex);
                     break;
             }
         }
@@ -147,19 +152,19 @@ namespace DSmyth.TerrainModule {
         private void AssignVertices(Node[] points) {
             for (int i = 0; i < points.Length; i++) {
                 // Only add the vertice if it hasnt already been added
-                if (points[i].VetexIndex == -1) {
-                    points[i].VetexIndex = Vertices.Count;
+                if (points[i].VertexIndex == -1) {
+                    points[i].VertexIndex = Vertices.Count;
                     Vertices.Add(points[i].Position);
                 }
             }
         }
 
         private void CreateTriangle(Node a, Node b, Node c) {
-            Triangles.Add(a.VetexIndex);
-            Triangles.Add(b.VetexIndex);
-            Triangles.Add(c.VetexIndex);
+            Triangles.Add(a.VertexIndex);
+            Triangles.Add(b.VertexIndex);
+            Triangles.Add(c.VertexIndex);
 
-            Triangle triangle = new Triangle(a.VetexIndex, b.VetexIndex, c.VetexIndex);
+            Triangle triangle = new Triangle(a.VertexIndex, b.VertexIndex, c.VertexIndex);
             AddTriangleToDictionary(triangle.VertexIndexA, triangle);
             AddTriangleToDictionary(triangle.VertexIndexB, triangle);
             AddTriangleToDictionary(triangle.VertexIndexC, triangle);

@@ -23,9 +23,10 @@ namespace DSmyth.TerrainModule {
         //[SerializeField] private List<int> m_Triangles = new List<int>();
         //private Dictionary<int, List<Triangle>> m_TriangleDict = new Dictionary<int, List<Triangle>>();
 
-        private SquareGrid m_SquareGrid;
         private Mesh m_Mesh;
+        private Mesh m_WallMesh;
         private MeshFilter m_MeshFilter;
+        private SquareGrid m_SquareGrid;
 
 
 
@@ -89,16 +90,16 @@ namespace DSmyth.TerrainModule {
 
             List<Vector3> wallVertices = new List<Vector3>();
             List<int> wallTriangles = new List<int>();
-            Mesh wallMesh = new Mesh();
+            m_WallMesh = new Mesh();
             float wallHeight = 1f;
 
             foreach (List<int> outline in m_Outlines) {
                 for (int i = 0; i < outline.Count - 1; i++) {
                     int startIndex = wallVertices.Count;
-                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]] + Vector3.up * wallHeight / 2);   // Left vertex
-                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]] + Vector3.up * wallHeight / 2);   // right
-                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]] - Vector3.up * wallHeight / 2);   // bottom left
-                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]] - Vector3.up * wallHeight / 2);   // bottom right
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]]/* + Vector3.up * wallHeight / 2*/);      // top Left vertex
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]]/* + Vector3.up * wallHeight / 2*/);  // top right vertex
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i]] - Vector3.up * wallHeight);      // bottom left vertex
+                    wallVertices.Add(m_SquareGrid.Vertices[outline[i + 1]] - Vector3.up * wallHeight);  // bottom right vertex
 
                     wallTriangles.Add(startIndex + 0);
                     wallTriangles.Add(startIndex + 2);
@@ -109,11 +110,11 @@ namespace DSmyth.TerrainModule {
                     wallTriangles.Add(startIndex + 0);
                 }
             }
-            wallMesh.vertices = wallVertices.ToArray();
-            wallMesh.triangles = wallTriangles.ToArray();
-            wallMesh.RecalculateNormals();
+            m_WallMesh.vertices = wallVertices.ToArray();
+            m_WallMesh.triangles = wallTriangles.ToArray();
+            //m_WallMesh.RecalculateNormals();
 
-            m_WallMeshFilter.mesh = wallMesh;
+            m_WallMeshFilter.mesh = m_WallMesh;
         }
 
         private void Generate2DColliders() {
@@ -144,13 +145,12 @@ namespace DSmyth.TerrainModule {
 
                 int newOutlineVertex = GetConnectedOutlineVertex(vertexIndex);
                 if (newOutlineVertex != -1) {
-                    m_CheckedVertices.Add(newOutlineVertex);
+                    m_CheckedVertices.Add(vertexIndex);
 
-                    List<int> newOutline = new List<int>();
-                    newOutline.Add(vertexIndex);
+                    List<int> newOutline = new List<int> { vertexIndex };
                     m_Outlines.Add(newOutline);
-                    FollowOutline(newOutlineVertex, m_Outlines.Count - 1);
-                    m_Outlines[m_Outlines.Count - 1].Add(vertexIndex);
+                    FollowOutline(newOutlineVertex, m_Outlines.Count - 1);  // Recursively finds the outline to an area of the map
+                    m_Outlines[m_Outlines.Count - 1].Add(vertexIndex);  // after the outline has been found, re-add the first vertex of this outline back to the list, to complete the loop.
                 }
             }
         }

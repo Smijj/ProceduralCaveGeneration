@@ -11,6 +11,7 @@ namespace DSmyth.TerrainModule
         [Header("Settings")]
         [SerializeField] private int m_Width;
         [SerializeField] private int m_Height;
+        [SerializeField] private int m_BorderSize = 5;
 
         [SerializeField] private string m_Seed;
         [SerializeField] private bool m_UseRandomSeed;
@@ -56,9 +57,21 @@ namespace DSmyth.TerrainModule
                 SmoothMap();
             }
 
+            int[,] borderedMap = new int[m_Width + m_BorderSize * 2, m_Height + m_BorderSize * 2];
+            for (int x = 0; x < borderedMap.GetLength(0); x++) {
+                for (int y = 0; y < borderedMap.GetLength(1); y++) {
+                    if (x >= m_BorderSize && x < m_Width + m_BorderSize && y >= m_BorderSize && y < m_Height + m_BorderSize) {
+                        borderedMap[x, y] = m_Map[x - m_BorderSize, y - m_BorderSize];
+                    } else {
+                        borderedMap[x, y] = 1;
+                    }
+                }
+            }
+
+
             MeshGenerator meshGenerator = GetComponent<MeshGenerator>();
             if (meshGenerator != null ) {
-                meshGenerator.GenerateMesh(m_Map);
+                meshGenerator.GenerateMesh(borderedMap);
             }
         }
 
