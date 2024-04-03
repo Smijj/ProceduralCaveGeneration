@@ -7,9 +7,10 @@ namespace DSmyth.TerrainModule
 {
     public class MapGenerator : MonoBehaviour
     {
+
+        [Header("Settings")]
         [SerializeField] private int m_Width;
         [SerializeField] private int m_Height;
-
 
         [SerializeField] private string m_Seed;
         [SerializeField] private bool m_UseRandomSeed;
@@ -18,7 +19,13 @@ namespace DSmyth.TerrainModule
         [Range(0,100)]
         [SerializeField] private int m_RandomFillPercent;
 
+        [Header("Debug")]
+        [SerializeField] private bool m_DrawGizmos = false;
+
+
         private int[,] m_Map;
+
+
 
         private void Start() {
             GenerateMap();
@@ -26,6 +33,17 @@ namespace DSmyth.TerrainModule
         private void Update() {
             if (Input.GetKeyDown(KeyCode.Space)) {
                 GenerateMap();
+            }
+        }
+        private void OnDrawGizmos() {
+            if (!Application.isPlaying || m_Map == null || !m_DrawGizmos) return;
+
+            for (int x = 0; x < m_Width; x++) {
+                for (int y = 0; y < m_Height; y++) {
+                    Gizmos.color = m_Map[x, y] == 1 ? Color.black : Color.white;
+                    Vector3 pos = new Vector3(-m_Width / 2 + x + 0.5f, 0, -m_Height / 2 + y + 0.5f);
+                    Gizmos.DrawCube(pos, Vector3.one);
+                }
             }
         }
 
@@ -36,6 +54,11 @@ namespace DSmyth.TerrainModule
 
             for (int i = 0; i < m_SmoothingIterations; i++) {
                 SmoothMap();
+            }
+
+            MeshGenerator meshGenerator = GetComponent<MeshGenerator>();
+            if (meshGenerator != null ) {
+                meshGenerator.GenerateMesh(m_Map);
             }
         }
 
@@ -93,16 +116,6 @@ namespace DSmyth.TerrainModule
 
 
 
-        private void OnDrawGizmos() {
-            if (!Application.isPlaying || m_Map == null) return;
-
-            for (int x = 0; x < m_Width; x++) {
-                for (int y = 0; y < m_Height; y++) {
-                    Gizmos.color = m_Map[x, y] == 1 ? Color.black : Color.white;
-                    Vector3 pos = new Vector3(-m_Width/2 + x + 0.5f, 0, -m_Height/2 + y + 0.5f);
-                    Gizmos.DrawCube(pos, Vector3.one);
-                }
-            }
-        }
+        
     }
 }
