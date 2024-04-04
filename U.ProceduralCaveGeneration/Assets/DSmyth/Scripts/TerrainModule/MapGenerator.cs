@@ -75,6 +75,41 @@ namespace DSmyth.TerrainModule
             }
         }
 
+        List<Coord> GetRegionTiles(int startX, int startY) {
+            List<Coord> tiles = new List<Coord>();          // List of tiles in this region
+            int[,] mapFlags = new int[m_Width, m_Height];   // 2d int array that keeps track of if a tile has been looked at already
+            int tileType = m_Map[startX, startY];           // the type of tile the starting tile is
+
+            Queue<Coord> queue = new Queue<Coord>();
+            queue.Enqueue(new Coord(startX, startY));
+            mapFlags[startX, startY] = 1;                   // mark the tile at the start pos as been looked out
+
+            while (queue.Count > 0) {
+                Coord tile = queue.Dequeue();              // Gets first item in queue, an removes it from the queue
+                tiles.Add(tile);
+
+                // look at the current tiles adjacent tiles
+                for (int x = tile.TileX - 1; x < tile.TileX +1; x++) {
+                    for (int y = tile.TileY - 1; y < tile.TileY + 1; y++) {
+                        // Continue if the tile is out of range or is a diagonal tile
+                        if (!IsInMapRange(x, y) || (x != tile.TileX && y != tile.TileY)) continue;
+                        // Continue if this tile has already been looked at or isnt the same type as the starting tile
+                        if (mapFlags[x, y] == 1 || m_Map[x, y] != tileType) continue;
+
+                        mapFlags[x, y] = 1;
+                        queue.Enqueue(new Coord(x, y));
+                    }
+                }
+            }
+
+            return tiles;
+        }
+
+        private bool IsInMapRange(int x, int y) {
+            return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
+                
+        }
+
         private void RandomFillMap() {
             if (m_UseRandomSeed) {
                 m_Seed = DateTime.Now.TimeOfDay.ToString();
@@ -114,7 +149,7 @@ namespace DSmyth.TerrainModule
                 for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY++) {
 
                     // Dont look at tiles out of the bounds of the m_Map array
-                    if (neighbourX < 0 || neighbourX >= m_Width || neighbourY < 0 || neighbourY >= m_Height) {
+                    if (!IsInMapRange(neighbourX, neighbourY)) {
                         wallCount++;    // if it is out of bound, add to wall count anyway to encourage wall growth
                         continue;       
                     }
@@ -127,7 +162,15 @@ namespace DSmyth.TerrainModule
             return wallCount;
         }
 
+        public struct Coord {
+            public int TileX;
+            public int TileY;
 
+            public Coord(int _tileX, int _tileY) {
+                this.TileX = _tileX;
+                this.TileY = _tileY;
+            }
+        }
 
         
     }

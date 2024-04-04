@@ -243,8 +243,8 @@ MonoBehaviour:
   m_BorderSize: 1
   m_Seed: Test
   m_UseRandomSeed: 1
-  m_SmoothingIterations: 3
-  m_RandomFillPercent: 46
+  m_SmoothingIterations: 2
+  m_RandomFillPercent: 48
   m_DrawGizmos: 0
 --- !u!4 &132624809
 Transform:
@@ -326,7 +326,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_SquareSize: 1
   m_Is3D: 1
+  m_MeshFilter: {fileID: 132624811}
   m_WallMeshFilter: {fileID: 26161863}
+  m_Mesh: {fileID: 0}
+  m_WallMesh: {fileID: 0}
   m_DrawGizmos: 0
 --- !u!1 &1764818938
 GameObject:

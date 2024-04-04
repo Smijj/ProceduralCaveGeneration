@@ -13,25 +13,22 @@ namespace DSmyth.TerrainModule {
         [SerializeField] private bool m_Is3D = true;
 
         [Header("Elements")]
+        [SerializeField] private MeshFilter m_MeshFilter;
         [SerializeField] private MeshFilter m_WallMeshFilter;
+        
+        private SquareGrid m_SquareGrid;
         private List<List<int>> m_Outlines = new List<List<int>>();
         private HashSet<int> m_CheckedVertices = new HashSet<int>();
 
         [Header("Debug")]
+        [SerializeField] private Mesh m_Mesh;
+        [SerializeField] private Mesh m_WallMesh;
         [SerializeField] private bool m_DrawGizmos = false;
-        //[SerializeField] private List<Vector3> m_Vertices = new List<Vector3>();
-        //[SerializeField] private List<int> m_Triangles = new List<int>();
-        //private Dictionary<int, List<Triangle>> m_TriangleDict = new Dictionary<int, List<Triangle>>();
-
-        private Mesh m_Mesh;
-        private Mesh m_WallMesh;
-        private MeshFilter m_MeshFilter;
-        private SquareGrid m_SquareGrid;
-
 
 
         private void Start() {
             if (!m_MeshFilter) m_MeshFilter = GetComponent<MeshFilter>();
+            if (!m_Mesh) m_Mesh = GetComponent<Mesh>();
             m_Mesh = new Mesh();
         }
 
