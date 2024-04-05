@@ -15,14 +15,14 @@ namespace DSmyth.TerrainModule {
         [Header("Elements")]
         [SerializeField] private MeshFilter m_MeshFilter;
         [SerializeField] private MeshFilter m_WallMeshFilter;
+        private Mesh m_Mesh;
+        private Mesh m_WallMesh;
         
         private SquareGrid m_SquareGrid;
         private List<List<int>> m_Outlines = new List<List<int>>();
         private HashSet<int> m_CheckedVertices = new HashSet<int>();
 
         [Header("Debug")]
-        [SerializeField] private Mesh m_Mesh;
-        [SerializeField] private Mesh m_WallMesh;
         [SerializeField] private bool m_DrawGizmos = false;
 
 

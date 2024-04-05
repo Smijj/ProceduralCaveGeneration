@@ -8,19 +8,23 @@ namespace DSmyth.TerrainModule
     public class MapGenerator : MonoBehaviour
     {
 
-        [Header("Settings")]
+        [Header("Basic Settings")]
         [SerializeField] private int m_Width;
         [SerializeField] private int m_Height;
         [SerializeField] private int m_BorderSize = 5;
         [SerializeField] private int m_MinWallSizeThreshold = 50;
         [SerializeField] private int m_MinCavitySizeThreshold = 50;
-
-        [SerializeField] private string m_Seed;
-        [SerializeField] private bool m_UseRandomSeed;
-        [SerializeField] private int m_SmoothingIterations = 5;
-
         [Range(0,100)]
         [SerializeField] private int m_RandomFillPercent;
+        
+        [Header("Smoothing Settings")]
+        [SerializeField] private bool m_SmoothMapWithBias = true;
+        [SerializeField] private int m_SmoothingIterations = 5;
+
+        [Header("Seed Generation")]
+        [SerializeField] private string m_Seed;
+        [SerializeField] private bool m_UseRandomSeed;
+
 
         [Header("Debug")]
         [SerializeField] private bool m_DrawGizmos = false;
@@ -58,12 +62,13 @@ namespace DSmyth.TerrainModule
             m_Map = new int[m_Width, m_Height];
             RandomFillMap();
 
-            for (int i = 0; i < m_SmoothingIterations; i++) {
+            if (m_SmoothMapWithBias)
+                SmoothMapWithBias();
+            else
                 SmoothMap();
-            }
 
-            ProcessMap();
-
+            // Removes any walls or cavities below a certain threshold
+            ProcessMapRegions();
 
             // Create solid border around the map
             int[,] borderedMap = new int[m_Width + m_BorderSize * 2, m_Height + m_BorderSize * 2];
@@ -84,7 +89,7 @@ namespace DSmyth.TerrainModule
             }
         }
 
-        private void ProcessMap() {
+        private void ProcessMapRegions() {
             List<List<Coord>> wallRegions = GetRegions(1); // Regions of type 1 (wall type)
 
             foreach (List<Coord> wallRegion in wallRegions) { 
@@ -180,17 +185,43 @@ namespace DSmyth.TerrainModule
             }
         }
 
-        private void SmoothMap() {
-            for (int x = 0; x < m_Width; x++) {
-                for (int y = 0; y < m_Height; y++) {
-                    int neighbourWallTiles = GetSurroundingWallCount(x, y);
+        private void SmoothMapWithBias() {
+            for (int i = 0; i < m_SmoothingIterations; i++) {
+                for (int x = 0; x < m_Width; x++) {
+                    for (int y = 0; y < m_Height; y++) {
+                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
 
-                    if (neighbourWallTiles > 4) {
-                        m_Map[x, y] = 1;
-                    } else if (neighbourWallTiles < 4) {
-                        m_Map[x, y] = 0;
+                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
+                        if (neighbourWallTiles > 4) {
+                            m_Map[x, y] = 1;
+                        } else if (neighbourWallTiles < 4) {
+                            m_Map[x, y] = 0;
+                        }
                     }
                 }
+            }
+        }
+
+        private void SmoothMap() {
+            for (int i = 0; i < m_SmoothingIterations; i++) {
+
+                int[,] smoothedMap = (int[,])m_Map.Clone();    // Stores the edited map data from the celluar automata algorithm
+
+                for (int x = 0; x < m_Width; x++) {
+                    for (int y = 0; y < m_Height; y++) {
+                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
+
+                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
+                        if (neighbourWallTiles > 4) {
+                            smoothedMap[x, y] = 1;
+                        } else if (neighbourWallTiles < 4) {
+                            smoothedMap[x, y] = 0;
+                        }
+                    }
+                }
+
+                // Sets the main map array to the altered smoothMap array for the next itteration of smoothing.
+                m_Map = smoothedMap;
             }
         }
 
