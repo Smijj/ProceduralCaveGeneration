@@ -12,6 +12,8 @@ namespace DSmyth.TerrainModule
         [SerializeField] private int m_Width;
         [SerializeField] private int m_Height;
         [SerializeField] private int m_BorderSize = 5;
+        [SerializeField] private int m_MinWallSizeThreshold = 50;
+        [SerializeField] private int m_MinCavitySizeThreshold = 50;
 
         [SerializeField] private string m_Seed;
         [SerializeField] private bool m_UseRandomSeed;
@@ -32,7 +34,10 @@ namespace DSmyth.TerrainModule
             GenerateMap();
         }
         private void Update() {
-            if (Input.GetKeyDown(KeyCode.Space)) {
+            //if (Input.GetKeyDown(KeyCode.Space)) {
+            //    GenerateMap();
+            //}
+            if (Input.GetMouseButtonDown(0)) {
                 GenerateMap();
             }
         }
@@ -57,6 +62,10 @@ namespace DSmyth.TerrainModule
                 SmoothMap();
             }
 
+            ProcessMap();
+
+
+            // Create solid border around the map
             int[,] borderedMap = new int[m_Width + m_BorderSize * 2, m_Height + m_BorderSize * 2];
             for (int x = 0; x < borderedMap.GetLength(0); x++) {
                 for (int y = 0; y < borderedMap.GetLength(1); y++) {
@@ -68,11 +77,53 @@ namespace DSmyth.TerrainModule
                 }
             }
 
-
+            // Generate mesh using map data
             MeshGenerator meshGenerator = GetComponent<MeshGenerator>();
             if (meshGenerator != null ) {
                 meshGenerator.GenerateMesh(borderedMap);
             }
+        }
+
+        private void ProcessMap() {
+            List<List<Coord>> wallRegions = GetRegions(1); // Regions of type 1 (wall type)
+
+            foreach (List<Coord> wallRegion in wallRegions) { 
+                if (wallRegion.Count < m_MinWallSizeThreshold) {
+                    foreach (Coord tile in wallRegion) {
+                        m_Map[tile.TileX, tile.TileY] = 0; // Remove any wall regions that are less than a threshold size
+                    }
+                }
+            }
+
+            List<List<Coord>> roomRegions = GetRegions(0); // Regions of type 1 (wall type)
+
+            foreach (List<Coord> roomRegion in roomRegions) {
+                if (roomRegion.Count < m_MinCavitySizeThreshold) {
+                    foreach (Coord tile in roomRegion) {
+                        m_Map[tile.TileX, tile.TileY] = 1; // Remove any room/cavity regions that are less than a threshold size
+                    }
+                }
+            }
+        }
+
+        private List<List<Coord>> GetRegions(int tileType) {
+            List<List<Coord>> regions = new List<List<Coord>>();
+            int[,] mapFlags = new int[m_Width, m_Height];   // 2d int array that keeps track of if a tile has been looked at already
+
+            for (int x = 0; x < m_Width; x++) {
+                for (int y = 0; y < m_Height; y++) {
+                    if (mapFlags[x, y] == 1 || m_Map[x, y] != tileType) continue;   // Skip if this tile has already been looked at or the tile doesnt match the tileType
+                    
+                    List<Coord> newRegion = GetRegionTiles(x, y);
+                    regions.Add(newRegion);
+
+                    foreach (Coord tile in newRegion) {
+                        mapFlags[tile.TileX, tile.TileY] = 1;   // Mark all the tiles in this new region as looked at so they wont be considered in the following iterations
+                    }
+                }
+            }
+
+            return regions;
         }
 
         List<Coord> GetRegionTiles(int startX, int startY) {
@@ -85,19 +136,20 @@ namespace DSmyth.TerrainModule
             mapFlags[startX, startY] = 1;                   // mark the tile at the start pos as been looked out
 
             while (queue.Count > 0) {
-                Coord tile = queue.Dequeue();              // Gets first item in queue, an removes it from the queue
+                Coord tile = queue.Dequeue();               // Gets first item in queue, an removes it from the queue
                 tiles.Add(tile);
 
                 // look at the current tiles adjacent tiles
-                for (int x = tile.TileX - 1; x < tile.TileX +1; x++) {
-                    for (int y = tile.TileY - 1; y < tile.TileY + 1; y++) {
-                        // Continue if the tile is out of range or is a diagonal tile
-                        if (!IsInMapRange(x, y) || (x != tile.TileX && y != tile.TileY)) continue;
-                        // Continue if this tile has already been looked at or isnt the same type as the starting tile
-                        if (mapFlags[x, y] == 1 || m_Map[x, y] != tileType) continue;
-
-                        mapFlags[x, y] = 1;
-                        queue.Enqueue(new Coord(x, y));
+                for (int x = tile.TileX - 1; x <= tile.TileX + 1; x++) {
+                    for (int y = tile.TileY - 1; y <= tile.TileY + 1; y++) {
+                        if (!IsInMapRange(x, y) || mapFlags[x, y] == 1 || m_Map[x, y] != tileType) continue;   // Continue if the tile is out of range,
+                                                                                                               // has already been looked at,
+                                                                                                               // or isnt the same type as the starting tile
+                        // Dont look at diagonal tiles
+                        if (y == tile.TileY || x == tile.TileX) {
+                            mapFlags[x, y] = 1;
+                            queue.Enqueue(new Coord(x, y));
+                        }
                     }
                 }
             }
