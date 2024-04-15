@@ -243,7 +243,7 @@ MonoBehaviour:
   m_BorderSize: 1
   m_MinWallSizeThreshold: 40
   m_MinCavitySizeThreshold: 40
-  m_RandomFillPercent: 48
+  m_RandomFillPercent: 53
   m_SmoothMapWithBias: 0
   m_SmoothingIterations: 10
   m_Seed: 0

@@ -3,8 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace DSmyth.TerrainModule
-{
+namespace DSmyth.TerrainModule {
     public class MapGenerator : MonoBehaviour
     {
 
@@ -31,6 +30,7 @@ namespace DSmyth.TerrainModule
 
 
         private int[,] m_Map;
+
 
 
 
@@ -101,14 +101,70 @@ namespace DSmyth.TerrainModule
             }
 
             List<List<Coord>> roomRegions = GetRegions(0); // Regions of type 1 (wall type)
+            List<Room> survivingRooms = new List<Room>();
 
             foreach (List<Coord> roomRegion in roomRegions) {
                 if (roomRegion.Count < m_MinCavitySizeThreshold) {
                     foreach (Coord tile in roomRegion) {
                         m_Map[tile.TileX, tile.TileY] = 1; // Remove any room/cavity regions that are less than a threshold size
                     }
+                } else {
+                    survivingRooms.Add(new Room(roomRegion, m_Map));
                 }
             }
+
+            ConnectClosestRooms(survivingRooms);
+        }
+
+        private void ConnectClosestRooms(List<Room> allRooms) {
+            // Go through each of the surviving rooms and compare them to eachother and find the closest connection points to connect at
+
+            int bestDistance = 0;
+            Coord bestTileA = new Coord();
+            Coord bestTileB = new Coord();
+            Room bestRoomA = new Room();
+            Room bestRoomB = new Room();
+            bool possibleConnectionFound = false;
+
+            foreach(Room roomA in allRooms) {
+                possibleConnectionFound = false;
+
+                foreach(Room roomB in allRooms) {
+                    if (roomA == roomB) continue;
+                    if (roomA.IsConnected(roomB)) {
+                        possibleConnectionFound |= false;
+                        break;
+                    }
+
+                    for(int tileIndexA = 0; tileIndexA < roomA.EdgeTiles.Count; tileIndexA++) {
+                        for (int tileIndexB = 0; tileIndexB < roomB.EdgeTiles.Count; tileIndexB++) {
+                            Coord tileA = roomA.EdgeTiles[tileIndexA];
+                            Coord tileB = roomB.EdgeTiles[tileIndexB];
+                            int distanceBetweenRooms = (int)Mathf.Pow(tileA.TileX - tileB.TileX, 2) + (int)Mathf.Pow(tileA.TileY - tileB.TileY, 2);
+
+                            // Found new best connection
+                            if (distanceBetweenRooms < bestDistance || !possibleConnectionFound) {
+                                possibleConnectionFound = true;
+                                bestDistance = distanceBetweenRooms;
+                                bestTileA = tileA;
+                                bestTileB = tileB;
+                                bestRoomA = roomA;
+                                bestRoomB = roomB;
+                            }
+                        }
+                    }
+                }
+
+                if (possibleConnectionFound) {
+                    CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
+                }
+
+            }
+        }
+
+        private void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB) {
+            Room.ConnectRooms(roomA, roomB);
+            Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.yellow, 10);
         }
 
         private List<List<Coord>> GetRegions(int tileType) {
@@ -131,7 +187,7 @@ namespace DSmyth.TerrainModule
             return regions;
         }
 
-        List<Coord> GetRegionTiles(int startX, int startY) {
+        private List<Coord> GetRegionTiles(int startX, int startY) {
             List<Coord> tiles = new List<Coord>();          // List of tiles in this region
             int[,] mapFlags = new int[m_Width, m_Height];   // 2d int array that keeps track of if a tile has been looked at already
             int tileType = m_Map[startX, startY];           // the type of tile the starting tile is
@@ -160,11 +216,6 @@ namespace DSmyth.TerrainModule
             }
 
             return tiles;
-        }
-
-        private bool IsInMapRange(int x, int y) {
-            return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
-                
         }
 
         private void RandomFillMap() {
@@ -245,16 +296,18 @@ namespace DSmyth.TerrainModule
             return wallCount;
         }
 
-        public struct Coord {
-            public int TileX;
-            public int TileY;
 
-            public Coord(int _tileX, int _tileY) {
-                this.TileX = _tileX;
-                this.TileY = _tileY;
-            }
+        #region Helpers
+
+        private bool IsInMapRange(int x, int y) {
+            return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
+
+        }
+        private Vector3 CoordToWorldPoint(Coord tile) {
+            return new Vector3(-m_Width / 2f + 0.5f + tile.TileX, 2, -m_Height / 2 + 0.5f + tile.TileY);
         }
 
-        
+        #endregion
+
     }
 }
