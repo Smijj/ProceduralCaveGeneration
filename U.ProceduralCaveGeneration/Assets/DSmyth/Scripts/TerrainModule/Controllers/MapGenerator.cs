@@ -113,11 +113,32 @@ namespace DSmyth.TerrainModule {
                 }
             }
 
+            survivingRooms.Sort();  // Sorts rooms in order of largest to smallest
+            survivingRooms[0].IsMainRoom = true;
+            survivingRooms[0].IsAccesibleFromMainRoom = true;
+
             ConnectClosestRooms(survivingRooms);
         }
 
-        private void ConnectClosestRooms(List<Room> allRooms) {
+        private void ConnectClosestRooms(List<Room> allRooms, bool forceAccessibilityFromMainRoom = false) {
             // Go through each of the surviving rooms and compare them to eachother and find the closest connection points to connect at
+
+            List<Room> roomListA = new List<Room>();    // All rooms that are not accessible from the main room
+            List<Room> roomListB = new List<Room>();    // All the rooms that are accessible from the main room
+
+            // Add rooms to different accessiblity list depending on if they are accessible to the main room or not
+            if (forceAccessibilityFromMainRoom) {
+                foreach(Room room in allRooms) {
+                    if (room.IsAccesibleFromMainRoom) {
+                        roomListB.Add(room);
+                    } else {
+                        roomListA.Add(room);
+                    }
+                }
+            } else {
+                roomListA = allRooms;
+                roomListB = allRooms;
+            }
 
             int bestDistance = 0;
             Coord bestTileA = new Coord();
@@ -126,16 +147,18 @@ namespace DSmyth.TerrainModule {
             Room bestRoomB = new Room();
             bool possibleConnectionFound = false;
 
-            foreach(Room roomA in allRooms) {
-                possibleConnectionFound = false;
+            foreach(Room roomA in roomListA) {
+                if (!forceAccessibilityFromMainRoom) {
+                    possibleConnectionFound = false;    // Dont reset the possible connection found if forceAccessibilityFromMainRoom is true,
+                                                        // as we want to make sure it considers all the possible rooms for the best connection to the main room and not just the first one.
 
-                foreach(Room roomB in allRooms) {
-                    if (roomA == roomB) continue;
-                    if (roomA.IsConnected(roomB)) {
-                        possibleConnectionFound |= false;
-                        break;
-                    }
+                    if (roomA.ConnectedRooms.Count > 0) continue;   // If this room already has a connection, continue to the next room
+                }
 
+                foreach(Room roomB in roomListB) {
+                    if (roomA == roomB || roomA.IsConnected(roomB)) continue;       // Dont consider RoomB if its comparing to itself (i.e. RoomA == RoomB), or if they are already connected
+
+                    // Go through each of the edge tiles in RoomA & RoomB and find the two tiles that are closest together
                     for(int tileIndexA = 0; tileIndexA < roomA.EdgeTiles.Count; tileIndexA++) {
                         for (int tileIndexB = 0; tileIndexB < roomB.EdgeTiles.Count; tileIndexB++) {
                             Coord tileA = roomA.EdgeTiles[tileIndexA];
@@ -155,10 +178,22 @@ namespace DSmyth.TerrainModule {
                     }
                 }
 
-                if (possibleConnectionFound) {
+                // If a possible connection was found when comparing RoomA to all the other surviving Rooms, connect RoomA to that other room. Only called in the foreach loop if ForceAccessibility is false.
+                if (possibleConnectionFound && !forceAccessibilityFromMainRoom) {
                     CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
                 }
+            }
 
+            // If ForceAccessiblityToMainRoom is true, and there was possible connection found when comparing all the non-connected Rooms to all the connected Rooms,
+            // connect the closest non-main connected Room to its closest room thats connected to the main Room.
+            if (possibleConnectionFound && forceAccessibilityFromMainRoom) {
+                CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
+                ConnectClosestRooms(allRooms, true);    // Make sure to iterate through again to ensure connectivity
+            }
+
+            // Reiterate through this function, but with ForceAccessibilityFromMainRoom == true, to ensure all the rooms are accessible from the main room
+            if (!forceAccessibilityFromMainRoom) {
+                ConnectClosestRooms(allRooms, true);
             }
         }
 
