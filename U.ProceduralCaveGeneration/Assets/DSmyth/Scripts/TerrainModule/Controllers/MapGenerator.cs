@@ -20,6 +20,9 @@ namespace DSmyth.TerrainModule {
         [SerializeField] private bool m_SmoothMapWithBias = true;
         [SerializeField] private int m_SmoothingIterations = 5;
 
+        [Header("Room Connection Settings")]
+        [SerializeField] private int m_PassagewayRadius = 2;
+
         [Header("Seed Generation")]
         [SerializeField] private string m_Seed;
         [SerializeField] private bool m_UseRandomSeed;
@@ -317,6 +320,76 @@ namespace DSmyth.TerrainModule {
         private void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB) {
             Room.ConnectRooms(roomA, roomB);
             Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.yellow, 10);
+
+            List<Coord> line = GetLine(tileA, tileB);
+            foreach (Coord c in line) {
+                DrawCircle(c, m_PassagewayRadius);
+            }
+            
+        }
+
+        private void DrawCircle(Coord c, int r) {
+            for (int x = -r; x <= r; x++) {
+                for (int y = -r; y <= r; y++) {
+                    // Make sure its within the radius
+                    if (x*x + y*y <= r*r) {
+                        int drawX = c.TileX + x;
+                        int drawY = c.TileY + y;
+                        if (!IsInMapRange(drawX, drawY)) continue;  // Make sure its in the map
+
+                        m_Map[drawX, drawY] = 0; // Remove any walls within the radius
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a list of <see cref="Coord"/>s in a line linking the '<paramref name="from"/> <see cref="Coord"/> to the '<paramref name="to"/>' <see cref="Coord"/>.
+        /// </summary>
+        private List<Coord> GetLine(Coord from, Coord to) {
+            List<Coord> line = new List<Coord>();
+
+            int x = from.TileX;
+            int y = from.TileY;
+
+            int dx = to.TileX - x;  // Change in x
+            int dy = to.TileY - y;  // Change in y
+
+            bool inverted = false;
+            int step = Math.Sign(dx);           // Value by which x will be incremented each step
+            int gradientStep = Math.Sign(dy);   // Value by which y will be incremented if dx > dy
+
+            int longest = Mathf.Abs(dx);
+            int shortest = Mathf.Abs(dy);
+
+            if (longest < shortest) {
+                inverted = true;
+                
+                // flip the values if the longest distance from point A to B is in the y-axis
+                longest = Mathf.Abs(dy);
+                shortest = Mathf.Abs(dx);
+                step = Math.Sign(dy);           
+                gradientStep = Math.Sign(dx);   
+            }
+
+            int gradientAccumulation = longest / 2;
+            for (int i = 0; i < longest; i++) {
+                line.Add(new Coord(x, y));
+                
+                if (inverted) y += step;
+                else x += step;
+
+                gradientAccumulation += shortest;
+                if (gradientAccumulation >= longest) {
+                    if (inverted) x += gradientStep;
+                    else y += gradientStep;
+
+                    gradientAccumulation -= longest;
+                }
+
+            }
+
+            return line;
         }
 
         private List<List<Coord>> GetRegions(int tileType) {
