@@ -32,15 +32,12 @@ namespace DSmyth.TerrainModule {
         private int[,] m_Map;
 
 
-
+        #region Unity
 
         private void Start() {
             GenerateMap();
         }
         private void Update() {
-            //if (Input.GetKeyDown(KeyCode.Space)) {
-            //    GenerateMap();
-            //}
             if (Input.GetMouseButtonDown(0)) {
                 GenerateMap();
             }
@@ -56,6 +53,8 @@ namespace DSmyth.TerrainModule {
                 }
             }
         }
+
+        #endregion
 
 
         private void GenerateMap() {
@@ -88,6 +87,124 @@ namespace DSmyth.TerrainModule {
                 meshGenerator.GenerateMesh(borderedMap);
             }
         }
+
+
+        // Creating the raw Map data
+
+        /// <summary>
+        /// Randomly fill the Map[,] array with data. 1 or 0, wall or no wall.
+        /// </summary>
+        private void RandomFillMap()
+        {
+            if (m_UseRandomSeed)
+            {
+                m_Seed = DateTime.Now.TimeOfDay.ToString();
+            }
+
+            System.Random pseudoRandom = new System.Random(m_Seed.GetHashCode());
+
+            for (int x = 0; x < m_Width; x++)
+            {
+                for (int y = 0; y < m_Height; y++)
+                {
+                    if (x == 0 || x == m_Width - 1 || y == 0 || y == m_Height - 1)
+                    {
+                        m_Map[x, y] = 1;
+                    } else
+                    {
+                        m_Map[x, y] = pseudoRandom.Next(0, 100) < m_RandomFillPercent ? 1 : 0;
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// Smooths out the Map[,] data. 
+        /// This method has bias due to smoothing algorithm using the map data its already smoothed throughout the smoothing loop
+        /// instead of working off a copy of the map data that gets cloned at the start of each smoothing iteration.
+        /// </summary>
+        private void SmoothMapWithBias()
+        {
+            for (int i = 0; i < m_SmoothingIterations; i++)
+            {
+                for (int x = 0; x < m_Width; x++)
+                {
+                    for (int y = 0; y < m_Height; y++)
+                    {
+                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
+
+                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
+                        if (neighbourWallTiles > 4)
+                        {
+                            m_Map[x, y] = 1;
+                        } else if (neighbourWallTiles < 4)
+                        {
+                            m_Map[x, y] = 0;
+                        }
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// Smooths out the Map[,] data without bias.
+        /// </summary>
+        private void SmoothMap()
+        {
+            for (int i = 0; i < m_SmoothingIterations; i++)
+            {
+
+                int[,] smoothedMap = (int[,])m_Map.Clone();    // Stores the edited map data from the celluar automata algorithm
+
+                for (int x = 0; x < m_Width; x++)
+                {
+                    for (int y = 0; y < m_Height; y++)
+                    {
+                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
+
+                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
+                        if (neighbourWallTiles > 4)
+                        {
+                            smoothedMap[x, y] = 1;
+                        } else if (neighbourWallTiles < 4)
+                        {
+                            smoothedMap[x, y] = 0;
+                        }
+                    }
+                }
+
+                // Sets the main map array to the altered smoothMap array for the next itteration of smoothing.
+                m_Map = smoothedMap;
+            }
+        }
+        /// <summary>
+        /// Returns the number of wall tiles that surround a point on the Map grid. 
+        /// Counts grid positions that are out of bounds of the Map data as walls.
+        /// </summary>
+        private int GetSurroundingWallCount(int gridX, int gridY)
+        {
+            int wallCount = 0;
+
+            for (int neighbourX = gridX - 1; neighbourX <= gridX + 1; neighbourX++)
+            {
+                for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY++)
+                {
+
+                    // Dont look at tiles out of the bounds of the m_Map array
+                    if (!IsInMapRange(neighbourX, neighbourY))
+                    {
+                        wallCount++;    // if it is out of bound, add to wall count anyway to encourage wall growth
+                        continue;
+                    }
+                    if (neighbourX == gridX && neighbourY == gridY) continue;   // Dont look at original tile
+
+                    wallCount += m_Map[neighbourX, neighbourY];
+                }
+            }
+
+            return wallCount;
+        }
+
+
+        // Processing the different regions of the map and connecting seperate Rooms together
 
         private void ProcessMapRegions() {
             List<List<Coord>> wallRegions = GetRegions(1); // Regions of type 1 (wall type)
@@ -251,84 +368,6 @@ namespace DSmyth.TerrainModule {
             }
 
             return tiles;
-        }
-
-        private void RandomFillMap() {
-            if (m_UseRandomSeed) {
-                m_Seed = DateTime.Now.TimeOfDay.ToString();
-            }
-
-            System.Random pseudoRandom = new System.Random(m_Seed.GetHashCode());
-
-            for (int x = 0; x < m_Width; x++) {
-                for (int y = 0; y < m_Height; y++) {
-                    if (x == 0 || x == m_Width-1 || y == 0 || y == m_Height-1) {
-                        m_Map[x, y] = 1;
-                    } else {
-                        m_Map[x, y] = pseudoRandom.Next(0, 100) < m_RandomFillPercent ? 1 : 0;
-                    }
-                }
-            }
-        }
-
-        private void SmoothMapWithBias() {
-            for (int i = 0; i < m_SmoothingIterations; i++) {
-                for (int x = 0; x < m_Width; x++) {
-                    for (int y = 0; y < m_Height; y++) {
-                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
-
-                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
-                        if (neighbourWallTiles > 4) {
-                            m_Map[x, y] = 1;
-                        } else if (neighbourWallTiles < 4) {
-                            m_Map[x, y] = 0;
-                        }
-                    }
-                }
-            }
-        }
-
-        private void SmoothMap() {
-            for (int i = 0; i < m_SmoothingIterations; i++) {
-
-                int[,] smoothedMap = (int[,])m_Map.Clone();    // Stores the edited map data from the celluar automata algorithm
-
-                for (int x = 0; x < m_Width; x++) {
-                    for (int y = 0; y < m_Height; y++) {
-                        int neighbourWallTiles = GetSurroundingWallCount(x, y);
-
-                        // Alters a seperate map array using the cellular automata rules to avoid altering the base data for with the smoothing is being derived from
-                        if (neighbourWallTiles > 4) {
-                            smoothedMap[x, y] = 1;
-                        } else if (neighbourWallTiles < 4) {
-                            smoothedMap[x, y] = 0;
-                        }
-                    }
-                }
-
-                // Sets the main map array to the altered smoothMap array for the next itteration of smoothing.
-                m_Map = smoothedMap;
-            }
-        }
-
-        private int GetSurroundingWallCount(int gridX, int gridY) {
-            int wallCount = 0;
-
-            for (int neighbourX = gridX-1; neighbourX <= gridX + 1; neighbourX++) {
-                for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY++) {
-
-                    // Dont look at tiles out of the bounds of the m_Map array
-                    if (!IsInMapRange(neighbourX, neighbourY)) {
-                        wallCount++;    // if it is out of bound, add to wall count anyway to encourage wall growth
-                        continue;       
-                    }
-                    if (neighbourX == gridX && neighbourY == gridY) continue;   // Dont look at original tile
-
-                    wallCount += m_Map[neighbourX, neighbourY];
-                }
-            }
-
-            return wallCount;
         }
 
 
