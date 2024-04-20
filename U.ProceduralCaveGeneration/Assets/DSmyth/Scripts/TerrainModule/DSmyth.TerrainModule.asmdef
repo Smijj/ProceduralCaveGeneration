@@ -1,0 +1,14 @@
+{
+    "name": "DSmyth.TerrainModule",
+    "rootNamespace": "DSmyth.TerrainModule",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
