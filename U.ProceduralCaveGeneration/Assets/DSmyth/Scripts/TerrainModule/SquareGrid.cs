@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace DSmyth.TerrainModule {
     public class SquareGrid {
-        public Square[,] Squares;
+        
+        private Square[,] m_Squares;
+        public Square[,] Squares => m_Squares;
 
         public List<Vector3> Vertices = new List<Vector3>();
         public List<int> Triangles = new List<int>();
@@ -27,10 +29,10 @@ namespace DSmyth.TerrainModule {
             }
 
             // Create all the squares in the grid
-            Squares = new Square[nodeCountX - 1, nodeCountY - 1];
+            m_Squares = new Square[nodeCountX - 1, nodeCountY - 1];
             for (int x = 0; x < nodeCountX - 1; x++) {
                 for (int y = 0; y < nodeCountY - 1; y++) {
-                    Squares[x, y] = new Square(controlNodes[x, y + 1], controlNodes[x + 1, y + 1], controlNodes[x + 1, y], controlNodes[x, y]);
+                    m_Squares[x, y] = new Square(controlNodes[x, y + 1], controlNodes[x + 1, y + 1], controlNodes[x + 1, y], controlNodes[x, y]);
                 }
             }
 
@@ -39,19 +41,19 @@ namespace DSmyth.TerrainModule {
             Triangles.Clear();
             TriangleDict.Clear();
             // Calculate data needed to create meshes
-            for (int x = 0; x < Squares.GetLength(0); x++) {
-                for (int y = 0; y < Squares.GetLength(1); y++) {
-                    Square currentSquare = Squares[x, y];
+            for (int x = 0; x < m_Squares.GetLength(0); x++) {
+                for (int y = 0; y < m_Squares.GetLength(1); y++) {
+                    Square currentSquare = m_Squares[x, y];
                     //currentSquare.Interpolate(isoValue);
                     TriangulateSquare(currentSquare);
                 }
             }
         }
 
+
         /// <summary>
         /// Calculates the uv texture coordinates by converting the Vertices array into a Vector2 array
         /// </summary>
-        /// <returns></returns>
         public Vector2[] GetUVs() {
             List<Vector2> verticesV2 = new List<Vector2>();
             for (int i = 0; i < Vertices.Count; i++) {

@@ -13,9 +13,10 @@ namespace DSmyth.TerrainModule {
         [SerializeField] private bool m_Is3D = true;
 
         [Header("Elements")]
-        [SerializeField] private MeshFilter m_MeshFilter;
+        [SerializeField] private MeshFilter m_CaveMeshFilter;
         [SerializeField] private MeshFilter m_WallMeshFilter;
-        private Mesh m_Mesh;
+        private MeshCollider m_WallMeshCollider;
+        private Mesh m_CaveMesh;
         private Mesh m_WallMesh;
         
         private SquareGrid m_SquareGrid;
@@ -26,10 +27,9 @@ namespace DSmyth.TerrainModule {
         [SerializeField] private bool m_DrawGizmos = false;
 
 
-        private void Start() {
-            if (!m_MeshFilter) m_MeshFilter = GetComponent<MeshFilter>();
-            if (!m_Mesh) m_Mesh = GetComponent<Mesh>();
-            m_Mesh = new Mesh();
+        private void Awake() {
+            m_CaveMesh = new Mesh();
+            if (!m_WallMeshCollider) m_WallMeshCollider = m_WallMeshFilter.gameObject.AddComponent<MeshCollider>();
         }
 
         private void OnDrawGizmos() {
@@ -67,13 +67,13 @@ namespace DSmyth.TerrainModule {
 
             m_SquareGrid = new SquareGrid(map, m_SquareSize);
 
-            m_Mesh = new Mesh();
-            m_Mesh.vertices = m_SquareGrid.Vertices.ToArray();
-            m_Mesh.triangles = m_SquareGrid.Triangles.ToArray();
-            m_Mesh.uv = m_SquareGrid.GetUVs();
-            m_Mesh.RecalculateNormals();
+            m_CaveMesh = new Mesh();
+            m_CaveMesh.vertices = m_SquareGrid.Vertices.ToArray();
+            m_CaveMesh.triangles = m_SquareGrid.Triangles.ToArray();
+            m_CaveMesh.uv = m_SquareGrid.GetUVs();
+            //m_CaveMesh.RecalculateNormals();
 
-            m_MeshFilter.mesh = m_Mesh;
+            m_CaveMeshFilter.mesh = m_CaveMesh;
 
             if (m_Is3D) {
                 CreateWallMesh();
@@ -111,6 +111,7 @@ namespace DSmyth.TerrainModule {
             m_WallMesh.triangles = wallTriangles.ToArray();
             //m_WallMesh.RecalculateNormals();
 
+            // Set UVs on wall mesh
             List<Vector2> verticesV2 = new List<Vector2>();
             for (int i = 0; i < wallVertices.Count; i++) {
                 //verticesV2.Add((Vector2)wallVertices[i]);
@@ -118,7 +119,11 @@ namespace DSmyth.TerrainModule {
             }
             m_WallMesh.uv = verticesV2.ToArray();
 
+            // Set the mesh
             m_WallMeshFilter.mesh = m_WallMesh;
+
+            // Set the 3d Colliders
+            m_WallMeshCollider.sharedMesh = m_WallMesh;
         }
 
         private void Generate2DColliders() {
