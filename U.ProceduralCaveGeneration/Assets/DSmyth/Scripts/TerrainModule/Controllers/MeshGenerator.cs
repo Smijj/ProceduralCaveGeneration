@@ -10,6 +10,7 @@ namespace DSmyth.TerrainModule {
         //[SerializeField] private int m_MapSize = 10;
         //[SerializeField] private int m_IsoValue = 1;
         [SerializeField] private int m_SquareSize = 1;
+        [SerializeField] private int m_UVTiling = 10;
         [SerializeField] private bool m_Is3D = true;
 
         [Header("Elements")]
@@ -65,12 +66,12 @@ namespace DSmyth.TerrainModule {
             m_Outlines.Clear();
             m_CheckedVertices.Clear();
 
-            m_SquareGrid = new SquareGrid(map, m_SquareSize);
+            m_SquareGrid = new SquareGrid(map, m_SquareSize, m_UVTiling);
 
             m_CaveMesh = new Mesh();
             m_CaveMesh.vertices = m_SquareGrid.Vertices.ToArray();
             m_CaveMesh.triangles = m_SquareGrid.Triangles.ToArray();
-            m_CaveMesh.uv = m_SquareGrid.GetUVs();
+            m_CaveMesh.uv = m_SquareGrid.UVs;
             //m_CaveMesh.RecalculateNormals();
 
             m_CaveMeshFilter.mesh = m_CaveMesh;

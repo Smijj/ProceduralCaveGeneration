@@ -4,14 +4,20 @@ using UnityEngine;
 namespace DSmyth.TerrainModule {
     public class SquareGrid {
         
-        private Square[,] m_Squares;
         public Square[,] Squares => m_Squares;
+        private Square[,] m_Squares;
 
-        public List<Vector3> Vertices = new List<Vector3>();
-        public List<int> Triangles = new List<int>();
-        public Dictionary<int, List<Triangle>> TriangleDict = new Dictionary<int, List<Triangle>>();
+        public List<Vector3> Vertices => m_Vertices;
+        private List<Vector3> m_Vertices = new List<Vector3>();
+        public List<int> Triangles => m_Triangles;
+        private List<int> m_Triangles = new List<int>();
+        public Dictionary<int, List<Triangle>> TriangleDict => m_TriangleDict;
+        private Dictionary<int, List<Triangle>> m_TriangleDict = new Dictionary<int, List<Triangle>>();
+        public Vector2[] UVs => m_UVs;
+        private Vector2[] m_UVs;
 
-        public SquareGrid(int[,] map, float squareSize) {
+        // Constructor
+        public SquareGrid(int[,] map, float squareSize, int uvTileAmount = 1) {
 
             int nodeCountX = map.GetLength(0);
             int nodeCountY = map.GetLength(1);
@@ -37,10 +43,10 @@ namespace DSmyth.TerrainModule {
             }
 
 
-            Vertices.Clear();
-            Triangles.Clear();
-            TriangleDict.Clear();
-            // Calculate data needed to create meshes
+            // Calculate the Vertices and Triangles. This data is needed to create meshes
+            m_Vertices.Clear();
+            m_Triangles.Clear();
+            m_TriangleDict.Clear();
             for (int x = 0; x < m_Squares.GetLength(0); x++) {
                 for (int y = 0; y < m_Squares.GetLength(1); y++) {
                     Square currentSquare = m_Squares[x, y];
@@ -48,20 +54,16 @@ namespace DSmyth.TerrainModule {
                     TriangulateSquare(currentSquare);
                 }
             }
-        }
 
-
-        /// <summary>
-        /// Calculates the uv texture coordinates by converting the Vertices array into a Vector2 array
-        /// </summary>
-        public Vector2[] GetUVs() {
-            List<Vector2> verticesV2 = new List<Vector2>();
-            for (int i = 0; i < Vertices.Count; i++) {
-                //verticesV2.Add((Vector2)Vertices[i]);
-                verticesV2.Add(new Vector2(Vertices[i].x, Vertices[i].z));
+            // Create UV's for texturing
+            m_UVs = new Vector2[m_Vertices.Count];
+            for (int i = 0; i < m_Vertices.Count; i++) {
+                float percentX = Mathf.InverseLerp(-nodeCountX / 2 * squareSize, nodeCountX / 2 * squareSize, m_Vertices[i].x) * uvTileAmount;
+                float percentY = Mathf.InverseLerp(-nodeCountY / 2 * squareSize, nodeCountY / 2 * squareSize, m_Vertices[i].z) * uvTileAmount;
+                m_UVs[i] = new Vector2(percentX, percentY);
             }
-            return verticesV2.ToArray();
         }
+
 
         private void TriangulateSquare(Square square) {
             switch (square.Configuration) {
@@ -136,10 +138,10 @@ namespace DSmyth.TerrainModule {
                 case 15:
                     MeshDataFromPoints(square.TopLeft, square.TopRight, square.BottomRight, square.BottomLeft);
                     // Optimization for if the code for calculating the mesh's outlines is moved into this class
-                    //m_CheckedVertices.Add(square.TopLeft.VertexIndex);
-                    //m_CheckedVertices.Add(square.TopRight.VertexIndex);
-                    //m_CheckedVertices.Add(square.BottomRight.VertexIndex);
-                    //m_CheckedVertices.Add(square.BottomLeft.VertexIndex);
+                    //m_Checkedm_Vertices.Add(square.TopLeft.VertexIndex);
+                    //m_Checkedm_Vertices.Add(square.TopRight.VertexIndex);
+                    //m_Checkedm_Vertices.Add(square.BottomRight.VertexIndex);
+                    //m_Checkedm_Vertices.Add(square.BottomLeft.VertexIndex);
                     break;
             }
         }
@@ -155,16 +157,16 @@ namespace DSmyth.TerrainModule {
             for (int i = 0; i < points.Length; i++) {
                 // Only add the vertice if it hasnt already been added
                 if (points[i].VertexIndex == -1) {
-                    points[i].VertexIndex = Vertices.Count;
-                    Vertices.Add(points[i].Position);
+                    points[i].VertexIndex = m_Vertices.Count;
+                    m_Vertices.Add(points[i].Position);
                 }
             }
         }
 
         private void CreateTriangle(Node a, Node b, Node c) {
-            Triangles.Add(a.VertexIndex);
-            Triangles.Add(b.VertexIndex);
-            Triangles.Add(c.VertexIndex);
+            m_Triangles.Add(a.VertexIndex);
+            m_Triangles.Add(b.VertexIndex);
+            m_Triangles.Add(c.VertexIndex);
 
             Triangle triangle = new Triangle(a.VertexIndex, b.VertexIndex, c.VertexIndex);
             AddTriangleToDictionary(triangle.VertexIndexA, triangle);
@@ -174,13 +176,13 @@ namespace DSmyth.TerrainModule {
         }
 
         private void AddTriangleToDictionary(int vertexIndexKey, Triangle triangle) {
-            if (TriangleDict.ContainsKey(vertexIndexKey)) {
-                TriangleDict[vertexIndexKey].Add(triangle);
+            if (m_TriangleDict.ContainsKey(vertexIndexKey)) {
+                m_TriangleDict[vertexIndexKey].Add(triangle);
             } else {
                 List<Triangle> triangleList = new List<Triangle> {
                     triangle
                 };
-                TriangleDict.Add(vertexIndexKey, triangleList);
+                m_TriangleDict.Add(vertexIndexKey, triangleList);
             }
         }
     }
